@@ -11,6 +11,11 @@ default: install
 build:
 	go build -o ${BINARY}
 
+clean:
+	rm -rf ./examples/.terraform
+	rm -f ./examples/.terraform.lock.hcl
+	#rm -f ./examples/terraform.tfstate
+
 release:
 	GOOS=darwin GOARCH=amd64 go build -o ./bin/${BINARY}_${VERSION}_darwin_amd64
 	GOOS=freebsd GOARCH=386 go build -o ./bin/${BINARY}_${VERSION}_freebsd_386
@@ -34,8 +39,6 @@ test:
 	echo $(TEST) | xargs -t -n4 go test $(TESTARGS) -timeout=30s -parallel=4
 
 test-tf: install
-	rm -r examples/.terraform
-	rm examples/.terraform.lock.hcl
 	terraform -chdir=examples init
 	terraform -chdir=examples plan
 	TF_LOG=DEBUG terraform -chdir=examples apply --auto-approve

@@ -8,12 +8,12 @@ import (
 	"github.com/jamakase/terraform-prodiver-airbyte/airbyte_sdk"
 )
 
-type resourceSourceType struct{}
+type resourceDestinationType struct{}
 
-func (r resourceSourceType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (r resourceDestinationType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
 		Attributes: map[string]tfsdk.Attribute{
-			"source_id": {
+			"destination_id": {
 				Type:     types.StringType,
 				Computed: true,
 			},
@@ -21,7 +21,7 @@ func (r resourceSourceType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Dia
 				Type:     types.StringType,
 				Required: true,
 			},
-			"source_definition_id": {
+			"destination_definition_id": {
 				Type:     types.StringType,
 				Required: true,
 			},
@@ -38,17 +38,17 @@ func (r resourceSourceType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Dia
 }
 
 // New resource instance
-func (r resourceSourceType) NewResource(_ context.Context, p tfsdk.Provider) (tfsdk.Resource, diag.Diagnostics) {
-	return resourceSource{
+func (r resourceDestinationType) NewResource(_ context.Context, p tfsdk.Provider) (tfsdk.Resource, diag.Diagnostics) {
+	return resourceDestination{
 		p: *(p.(*provider)),
 	}, nil
 }
 
-type resourceSource struct {
+type resourceDestination struct {
 	p provider
 }
 
-func (r resourceSource) Create(ctx context.Context, request tfsdk.CreateResourceRequest, response *tfsdk.CreateResourceResponse) {
+func (r resourceDestination) Create(ctx context.Context, request tfsdk.CreateResourceRequest, response *tfsdk.CreateResourceResponse) {
 	if !r.p.configured {
 		response.Diagnostics.AddError(
 			"Provider not configured",
@@ -57,7 +57,7 @@ func (r resourceSource) Create(ctx context.Context, request tfsdk.CreateResource
 		return
 	}
 
-	var plan Source
+	var plan Destination
 	diags := request.Plan.Get(ctx, &plan)
 	response.Diagnostics.Append(diags...)
 	if response.Diagnostics.HasError() {
@@ -66,9 +66,9 @@ func (r resourceSource) Create(ctx context.Context, request tfsdk.CreateResource
 
 	connConfiguration, _ := unmarshalConnectorConfigJSON(plan.ConnectionConfiguration.Value)
 
-	source, _, err := r.p.client.api.SourceApi.CreateSource(ctx).SourceCreate(airbyte_sdk.SourceCreate{
+	source, _, err := r.p.client.api.DestinationApi.CreateDestination(ctx).DestinationCreate(airbyte_sdk.DestinationCreate{
 		Name:                    plan.Name.Value,
-		SourceDefinitionId:      plan.SourceDefinitionId.Value,
+		DestinationDefinitionId: plan.DestinationDefinitionId.Value,
 		WorkspaceId:             plan.WorkspaceId.Value,
 		ConnectionConfiguration: connConfiguration,
 	}).Execute()
@@ -81,9 +81,9 @@ func (r resourceSource) Create(ctx context.Context, request tfsdk.CreateResource
 		return
 	}
 
-	var result = Source{
-		SourceId:                types.String{Value: source.SourceId},
-		SourceDefinitionId:      types.String{Value: source.SourceDefinitionId},
+	var result = Destination{
+		DestinationId:           types.String{Value: source.DestinationId},
+		DestinationDefinitionId: types.String{Value: source.DestinationDefinitionId},
 		WorkspaceId:             types.String{Value: source.WorkspaceId},
 		ConnectionConfiguration: types.String{Value: normalizeConnectorConfigJSON(source.ConnectionConfiguration)},
 		Name:                    types.String{Value: source.Name},
@@ -97,19 +97,19 @@ func (r resourceSource) Create(ctx context.Context, request tfsdk.CreateResource
 	}
 }
 
-func (r resourceSource) Read(ctx context.Context, request tfsdk.ReadResourceRequest, response *tfsdk.ReadResourceResponse) {
+func (r resourceDestination) Read(ctx context.Context, request tfsdk.ReadResourceRequest, response *tfsdk.ReadResourceResponse) {
 	// Get current state
-	var state Source
+	var state Destination
 	diags := request.State.Get(ctx, &state)
 	response.Diagnostics.Append(diags...)
 	if response.Diagnostics.HasError() {
 		return
 	}
 
-	sourceId := state.SourceId.Value
+	sourceId := state.DestinationId.Value
 
-	source, _, err := r.p.client.api.SourceApi.GetSource(ctx).SourceIdRequestBody(airbyte_sdk.SourceIdRequestBody{
-		SourceId: sourceId,
+	source, _, err := r.p.client.api.DestinationApi.GetDestination(ctx).DestinationIdRequestBody(airbyte_sdk.DestinationIdRequestBody{
+		DestinationId: sourceId,
 	}).Execute()
 
 	if err != nil {
@@ -131,8 +131,8 @@ func (r resourceSource) Read(ctx context.Context, request tfsdk.ReadResourceRequ
 	}
 }
 
-func (r resourceSource) Update(ctx context.Context, request tfsdk.UpdateResourceRequest, response *tfsdk.UpdateResourceResponse) {
-	var plan Source
+func (r resourceDestination) Update(ctx context.Context, request tfsdk.UpdateResourceRequest, response *tfsdk.UpdateResourceResponse) {
+	var plan Destination
 	diags := request.Plan.Get(ctx, &plan)
 	response.Diagnostics.Append(diags...)
 	if response.Diagnostics.HasError() {
@@ -140,20 +140,20 @@ func (r resourceSource) Update(ctx context.Context, request tfsdk.UpdateResource
 	}
 
 	// Get current state
-	var state Source
+	var state Destination
 	diags = request.State.Get(ctx, &state)
 	response.Diagnostics.Append(diags...)
 	if response.Diagnostics.HasError() {
 		return
 	}
 
-	sourceId := state.SourceId.Value
+	sourceId := state.DestinationId.Value
 
 	connConfiguration, _ := unmarshalConnectorConfigJSON(plan.ConnectionConfiguration.Value)
 
-	source, _, err := r.p.client.api.SourceApi.UpdateSource(ctx).SourceUpdate(airbyte_sdk.SourceUpdate{
+	source, _, err := r.p.client.api.DestinationApi.UpdateDestination(ctx).DestinationUpdate(airbyte_sdk.DestinationUpdate{
 		Name:                    plan.Name.Value,
-		SourceId:                state.SourceId.Value,
+		DestinationId:           state.DestinationId.Value,
 		ConnectionConfiguration: connConfiguration,
 	}).Execute()
 
@@ -176,8 +176,8 @@ func (r resourceSource) Update(ctx context.Context, request tfsdk.UpdateResource
 	}
 }
 
-func (r resourceSource) Delete(ctx context.Context, request tfsdk.DeleteResourceRequest, response *tfsdk.DeleteResourceResponse) {
-	var state Source
+func (r resourceDestination) Delete(ctx context.Context, request tfsdk.DeleteResourceRequest, response *tfsdk.DeleteResourceResponse) {
+	var state Destination
 	diags := request.State.Get(ctx, &state)
 	response.Diagnostics.Append(diags...)
 	if response.Diagnostics.HasError() {
@@ -185,10 +185,10 @@ func (r resourceSource) Delete(ctx context.Context, request tfsdk.DeleteResource
 	}
 
 	// Get source ID from state
-	sourceId := state.SourceId.Value
+	sourceId := state.DestinationId.Value
 
 	// Delete source by calling API
-	_, err := r.p.client.api.SourceApi.DeleteSource(ctx).SourceIdRequestBody(airbyte_sdk.SourceIdRequestBody{SourceId: sourceId}).Execute()
+	_, err := r.p.client.api.DestinationApi.DeleteDestination(ctx).DestinationIdRequestBody(airbyte_sdk.DestinationIdRequestBody{DestinationId: sourceId}).Execute()
 	if err != nil {
 		response.Diagnostics.AddError(
 			"Error deleting source",
@@ -201,6 +201,6 @@ func (r resourceSource) Delete(ctx context.Context, request tfsdk.DeleteResource
 	response.State.RemoveResource(ctx)
 }
 
-func (r resourceSource) ImportState(ctx context.Context, request tfsdk.ImportResourceStateRequest, response *tfsdk.ImportResourceStateResponse) {
+func (r resourceDestination) ImportState(ctx context.Context, request tfsdk.ImportResourceStateRequest, response *tfsdk.ImportResourceStateResponse) {
 	panic("implement me")
 }
